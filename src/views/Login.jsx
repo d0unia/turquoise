@@ -49,7 +49,7 @@ export default function Login() {
               Check your inbox
             </div>
             <div style={{ fontSize: 13, color: '#888780', lineHeight: 1.6 }}>
-              A magic link has been sent to <strong>{email}</strong>. Click it to sign in — no password needed.
+              If <strong>{email}</strong> has an account, a magic link is on its way. Click it to sign in.
             </div>
           </div>
         ) : (
@@ -58,7 +58,7 @@ export default function Login() {
               Sign in
             </div>
             <div style={{ fontSize: 12, color: '#888780', marginBottom: 20, lineHeight: 1.5 }}>
-              Turquoise is invite-only. Enter your email to receive a magic link.
+              Enter your invited email address. If your account exists, you will receive a magic link.
             </div>
 
             <label style={{ display: 'block', fontSize: 11, color: '#888780', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
