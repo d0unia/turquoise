@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
 import Mascot from '../components/Mascot.jsx'
 
@@ -30,17 +31,32 @@ export default function Login() {
   return (
     <div style={{
       height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#f5f4f0',
+      background: '#f5f4f0', position: 'relative',
     }}>
+      {/* About link — top right */}
+      <Link
+        to="/about"
+        style={{
+          position: 'absolute', top: 20, right: 24,
+          fontSize: 12, color: '#888780', textDecoration: 'none',
+        }}
+      >
+        About
+      </Link>
       <div style={{
         background: '#fff', border: '0.5px solid #E8E6DD',
         borderRadius: 12, padding: '36px 32px',
         width: 360,
       }}>
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-          <Mascot size={30} />
-          <span style={{ fontSize: 16, fontWeight: 500, color: '#1a1a1a' }}>Turquoise</span>
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <Mascot size={30} />
+            <span style={{ fontSize: 16, fontWeight: 500, color: '#1a1a1a' }}>Turquoise</span>
+          </div>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 300, color: '#B4B2A9', letterSpacing: '0.01em' }}>
+            Know what's compounding before your next publish 🩵
+          </p>
         </div>
 
         {sent ? (

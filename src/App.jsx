@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
 import RequireAuth from './components/RequireAuth.jsx'
 import Login from './views/Login.jsx'
+import About from './views/About.jsx'
 import Actions from './views/Actions.jsx'
 import Guide from './views/Guide.jsx'
 import Members from './views/admin/Members.jsx'
@@ -19,6 +20,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/about" element={<About />} />
       <Route
         path="/"
         element={
