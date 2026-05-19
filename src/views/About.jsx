@@ -100,7 +100,7 @@ export default function About() {
             Know what's compounding<br />before your next publish
           </h1>
           <p style={{ fontSize: 15, color: MID, lineHeight: 1.7, margin: 0, maxWidth: 500 }}>
-            Turquoise tracks every content action you take, scores it against your commercial audience, and surfaces the patterns that actually drive growth — before you spend another day on content that disappears.
+            Turquoise tracks every content action you take, scores it against your commercial audience, and surfaces the patterns that actually drive growth. Before you spend another day on content that disappears.
           </p>
         </div>
 
@@ -110,7 +110,7 @@ export default function About() {
             Most content teams measure reach and engagement. Neither tells you whether the right people are paying attention. You can have a post with 40,000 impressions and zero pipeline impact, and never know why.
           </p>
           <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.7, margin: 0 }}>
-            The other problem is compounding. Some content keeps working for months. Most is forgotten by the next morning. The difference is rarely obvious at publish time — and almost impossible to see without tracking it systematically over time.
+            The other problem is compounding. Some content keeps working for months. Most is forgotten by the next morning. The difference is rarely obvious at publish time, and almost impossible to see without tracking it systematically over time.
           </p>
         </Section>
 
@@ -119,12 +119,12 @@ export default function About() {
           <Step
             n="1"
             title="Log every content action"
-            body="Each time you publish, comment, send, or appear — log the action in Turquoise. Channel, format, topic, date. Takes under a minute."
+            body="Each time you publish, comment, send, or appear: log the action in Turquoise. Channel, format, topic, date. Takes under a minute."
           />
           <Step
             n="2"
-            title="Score it — no feelings, only KPIs"
-            body="Each action gets an Action Score: EQ (Engagement Quotient, 1–5) × CQ (Commercial Quotient, 1–5). Both are anchored to observable criteria — engagement types you can see in platform data, ICP fit you can verify from LinkedIn profiles. Range 1–25. No interpretation required."
+            title="Score it. No feelings, only KPIs"
+            body="Each action gets an Action Score: EQ (Engagement Quotient, 1–5) × CQ (Commercial Quotient, 1–5). Both are anchored to observable criteria: engagement types you can see in platform data, ICP fit you can verify from LinkedIn profiles. Range 1–25. No interpretation required."
           />
           <Step
             n="3"
@@ -134,7 +134,7 @@ export default function About() {
           <Step
             n="4"
             title="Get a content brief, not just data"
-            body="The analysis feeds directly into a content brief for your next article, post, or series. Not a report to interpret — a brief to act on."
+            body="The analysis feeds directly into a content brief for your next article, post, or series. Not a report to interpret. A brief to act on."
           />
         </Section>
 
@@ -151,7 +151,7 @@ export default function About() {
               Why this matters more now
             </div>
             <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.7, margin: '0 0 14px' }}>
-              AI has removed almost all friction from content production. Anyone can publish daily. Volume is no longer a competitive advantage — in fact, it's increasingly noise.
+              AI has removed almost all friction from content production. Anyone can publish daily. Volume is no longer a competitive advantage. It's increasingly noise.
             </p>
             <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.7, margin: 0 }}>
               What compounds now is relevance to a specific audience, demonstrated consistently over time. Turquoise is built to measure exactly that, and to use AI to surface what's working before you can see it in pipeline data.
@@ -169,9 +169,9 @@ export default function About() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[
-                ['Compound analysis', 'Reads your full action history and identifies traction patterns, decay patterns, and audience signal — across channels and over time.'],
+                ['Compound analysis', 'Reads your full action history and identifies traction patterns, decay patterns, and audience signal across channels and over time.'],
                 ['Content brief generation', 'Translates the analysis into a concrete brief for your next piece: angle, format, channel, ICP hook, and what to avoid.'],
-                ['Insight cards', 'Surface non-obvious observations from your data — the post that keeps getting engagement three months later, the topic that never lands with buyers despite high reach.'],
+                ['Insight cards', 'Surface non-obvious observations from your data: the post that keeps getting engagement three months later, the topic that never lands with buyers despite high reach.'],
               ].map(([title, desc]) => (
                 <div key={title} style={{ display: 'flex', gap: 12 }}>
                   <div style={{
@@ -180,7 +180,7 @@ export default function About() {
                     background: TEAL,
                   }} />
                   <div>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: DARK }}>{title} — </span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: DARK }}>{title}: </span>
                     <span style={{ fontSize: 13, color: MUTED, lineHeight: 1.65 }}>{desc}</span>
                   </div>
                 </div>
@@ -195,12 +195,12 @@ export default function About() {
             Each piece of content gets an Action Score: EQ × CQ, from 1 to 25. A post with a DM from a named decision-maker at a target account scores 25. A post with 40,000 impressions and no ICP engagement scores 2.
           </p>
           <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.7, margin: '0 0 16px' }}>
-            TAS — Turquoise Attention Score — is the 90-day rolling average of all your Action Scores. This is the number that tells you whether you are compounding. Not how one post performed. Whether the trajectory is real.
+            TAS (Turquoise Attention Score) is the 90-day rolling average of all your Action Scores. This is the number that tells you whether you are compounding. Not how one post performed. Whether the trajectory is real.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 0 }}>
-            <Pill teal>TAS trending up — compounding</Pill>
-            <Pill>TAS flat — treadmill</Pill>
-            <Pill>TAS declining — noise</Pill>
+            <Pill teal>TAS trending up: compounding</Pill>
+            <Pill>TAS flat: treadmill</Pill>
+            <Pill>TAS declining: noise</Pill>
           </div>
         </Section>
 
