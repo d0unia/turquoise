@@ -124,8 +124,8 @@ export default function About() {
           />
           <Step
             n="2"
-            title="Score it on two dimensions"
-            body="Each action gets an EQ (Engagement Quotient, 1–5) for depth of engagement, and a CQ (Commercial Quotient, 1–5) for how well the engaging audience fits your ICP. Together they produce a TAS (Traction Action Score, 1–25)."
+            title="Score it — no feelings, only KPIs"
+            body="Each action gets an Action Score: EQ (Engagement Quotient, 1–5) × CQ (Commercial Quotient, 1–5). Both are anchored to observable criteria — engagement types you can see in platform data, ICP fit you can verify from LinkedIn profiles. Range 1–25. No interpretation required."
           />
           <Step
             n="3"
@@ -191,14 +191,17 @@ export default function About() {
         </Section>
 
         {/* the score */}
-        <Section label="The TAS score">
+        <Section label="Action Score and TAS">
+          <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.7, margin: '0 0 14px' }}>
+            Each piece of content gets an Action Score: EQ × CQ, from 1 to 25. A post with a DM from a named decision-maker at a target account scores 25. A post with 40,000 impressions and no ICP engagement scores 2.
+          </p>
           <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.7, margin: '0 0 16px' }}>
-            TAS = EQ × CQ. A post that got deep engagement from exactly the right people scores 25. A post that went broadly viral but reached no one in your ICP scores low. This is the core idea: not how many people, but which people and how much they cared.
+            TAS — Turquoise Attention Score — is the 90-day rolling average of all your Action Scores. This is the number that tells you whether you are compounding. Not how one post performed. Whether the trajectory is real.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 0 }}>
-            <Pill teal>TAS 15–25 compounding</Pill>
-            <Pill>TAS 8–14 building</Pill>
-            <Pill>TAS 1–7 noise</Pill>
+            <Pill teal>TAS trending up — compounding</Pill>
+            <Pill>TAS flat — treadmill</Pill>
+            <Pill>TAS declining — noise</Pill>
           </div>
         </Section>
 
