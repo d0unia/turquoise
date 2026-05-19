@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import Mascot from '../components/Mascot.jsx'
 
 const TEAL   = '#1D9E75'
 const DARK   = '#1a1a1a'
@@ -78,7 +77,7 @@ export default function About() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <Mascot size={22} />
+          <img src="/turquoise-logo.svg" alt="Turquoise" style={{ width: 22, height: 22 }} />
           <span style={{ fontSize: 14, fontWeight: 500, color: DARK }}>Turquoise</span>
         </div>
         <Link

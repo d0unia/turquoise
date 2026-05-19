@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
-import Mascot from '../components/Mascot.jsx'
 
 export default function Login() {
   const [email, setEmail]   = useState('')
@@ -51,7 +50,7 @@ export default function Login() {
         {/* Logo */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-            <Mascot size={30} />
+            <img src="/turquoise-logo.svg" alt="Turquoise" style={{ width: 28, height: 28 }} />
             <span style={{ fontSize: 16, fontWeight: 500, color: '#1a1a1a' }}>Turquoise</span>
           </div>
           <p style={{ margin: 0, fontSize: 12, fontWeight: 300, color: '#B4B2A9', letterSpacing: '0.01em' }}>

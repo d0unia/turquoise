@@ -1,6 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useState } from 'react'
-import Mascot from './Mascot.jsx'
 import LogActionModal from './LogActionModal.jsx'
 
 const PROJECTS = ['Scopelabs', 'Prompt Ranks']
@@ -93,7 +92,7 @@ export default function Layout() {
       }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '0 14px 20px' }}>
-          <Mascot size={26} />
+          <img src="/turquoise-logo.svg" alt="Turquoise" style={{ width: 24, height: 24 }} />
           <span style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a', letterSpacing: '0.01em' }}>
             Turquoise
           </span>
