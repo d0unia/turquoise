@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
+import RequireAuth from './components/RequireAuth.jsx'
+import Login from './views/Login.jsx'
 import Actions from './views/Actions.jsx'
 import Guide from './views/Guide.jsx'
 import Members from './views/admin/Members.jsx'
@@ -16,7 +18,15 @@ function Placeholder({ name }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Layout />}>
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/"
+        element={
+          <RequireAuth>
+            <Layout />
+          </RequireAuth>
+        }
+      >
         <Route index element={<Navigate to="/guide" replace />} />
         <Route path="actions"     element={<Actions />} />
         <Route path="analysis"    element={<Placeholder name="Analysis" />} />

@@ -42,7 +42,7 @@ RETURNS uuid AS $$
   SELECT organization_id FROM profiles WHERE id = auth.uid()
 $$ LANGUAGE sql STABLE SECURITY DEFINER;
 
-CREATE OR REPLACE FUNCTION current_role()
+CREATE OR REPLACE FUNCTION current_user_role()
 RETURNS text AS $$
   SELECT role FROM profiles WHERE id = auth.uid()
 $$ LANGUAGE sql STABLE SECURITY DEFINER;
@@ -78,7 +78,7 @@ CREATE POLICY "profiles_update_self" ON profiles
   FOR UPDATE USING (id = auth.uid());
 
 CREATE POLICY "profiles_admin_all" ON profiles
-  FOR ALL USING (current_role() = 'admin');
+  FOR ALL USING (current_user_role() = 'admin');
 
 
 -- ---------------------------------------------------------------
@@ -90,7 +90,7 @@ CREATE POLICY "projects_select" ON projects
 CREATE POLICY "projects_write" ON projects
   FOR ALL USING (
     organization_id = current_org_id()
-    AND current_role() = 'admin'
+    AND current_user_role() = 'admin'
   );
 
 
@@ -103,7 +103,7 @@ CREATE POLICY "social_accounts_select" ON social_accounts
 CREATE POLICY "social_accounts_write" ON social_accounts
   FOR ALL USING (
     organization_id = current_org_id()
-    AND current_role() = 'admin'
+    AND current_user_role() = 'admin'
   );
 
 
@@ -116,7 +116,7 @@ CREATE POLICY "channel_configs_select" ON channel_configs
 CREATE POLICY "channel_configs_write" ON channel_configs
   FOR ALL USING (
     organization_id = current_org_id()
-    AND current_role() = 'admin'
+    AND current_user_role() = 'admin'
   );
 
 
@@ -135,7 +135,7 @@ CREATE POLICY "actions_update" ON actions
 CREATE POLICY "actions_delete" ON actions
   FOR DELETE USING (
     organization_id = current_org_id()
-    AND current_role() = 'admin'
+    AND current_user_role() = 'admin'
   );
 
 
@@ -148,7 +148,7 @@ CREATE POLICY "competitor_pages_select" ON competitor_pages
 CREATE POLICY "competitor_pages_write" ON competitor_pages
   FOR ALL USING (
     organization_id = current_org_id()
-    AND current_role() = 'admin'
+    AND current_user_role() = 'admin'
   );
 
 

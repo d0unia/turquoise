@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import Mascot from './Mascot.jsx'
+import LogActionModal from './LogActionModal.jsx'
 
 const PROJECTS = ['Scopelabs', 'Prompt Ranks']
 
@@ -74,7 +75,8 @@ function NavSection({ label, items }) {
 export default function Layout() {
   const location = useLocation()
   const [project, setProject] = useState(0)
-  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerOpen, setPickerOpen]   = useState(false)
+  const [logOpen, setLogOpen]         = useState(false)
   const title = PAGE_TITLES[location.pathname] ?? ''
 
   return (
@@ -167,18 +169,17 @@ export default function Layout() {
           }}>
             <i className="ti ti-filter" style={{ fontSize: 13 }} aria-hidden="true" /> Filter
           </button>
-          <NavLink
-            to="/actions/new"
+          <button
+            onClick={() => setLogOpen(true)}
             style={{
               display: 'flex', alignItems: 'center', gap: 5,
               fontSize: 12, fontWeight: 500, color: '#fff',
               padding: '5px 10px', border: 'none',
-              borderRadius: 6, background: '#1D9E75',
-              textDecoration: 'none',
+              borderRadius: 6, background: '#1D9E75', cursor: 'pointer',
             }}
           >
             <i className="ti ti-plus" style={{ fontSize: 13 }} aria-hidden="true" /> Log action
-          </NavLink>
+          </button>
         </header>
 
         {/* Page content */}
@@ -186,6 +187,13 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+
+      {logOpen && (
+        <LogActionModal
+          onClose={() => setLogOpen(false)}
+          onSaved={() => setLogOpen(false)}
+        />
+      )}
     </div>
   )
 }
