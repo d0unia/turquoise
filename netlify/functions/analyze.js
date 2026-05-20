@@ -16,11 +16,13 @@ function cqLabel(cq) {
 
 function formatActions(actions) {
   return actions.map((a, i) => {
-    const score = (a.eq ?? 0) * (a.cq ?? 0)
+    const eq    = a.eq_score
+    const cq    = a.cq_score
+    const score = (eq ?? 0) * (cq ?? 0)
     const date  = a.action_date ? a.action_date.slice(0, 10) : 'unknown date'
     const lines = [
-      `[${i + 1}] ${date} | ${a.channel ?? 'unknown channel'} | ${a.format ?? ''} | topic: ${a.topic ?? 'unspecified'}`,
-      `    Action Score: ${score}/25  (EQ ${a.eq ?? '?'} = ${eqLabel(a.eq)} × CQ ${a.cq ?? '?'} = ${cqLabel(a.cq)})`,
+      `[${i + 1}] ${date} | ${a.channel ?? 'unknown channel'} | ${a.title ?? 'untitled'}`,
+      `    Action Score: ${score}/25  (EQ ${eq ?? '?'} = ${eqLabel(eq)} × CQ ${cq ?? '?'} = ${cqLabel(cq)})`,
     ]
     if (a.notes) lines.push(`    Notes: ${a.notes}`)
     if (a.social_accounts?.platform) lines.push(`    Platform account: ${a.social_accounts.platform}`)
@@ -104,7 +106,7 @@ export default async function handler(req, context) {
   // Fetch up to 60 actions (newest first), excluding untracked
   const { data: actions, error: dbError } = await supabase
     .from('actions')
-    .select('id, action_date, channel, format, topic, eq, cq, notes, social_accounts(platform), projects(name)')
+    .select('id, action_date, channel, title, eq_score, cq_score, tas_score, notes, social_accounts(platform), projects(name)')
     .neq('channel', 'untracked')
     .order('action_date', { ascending: false })
     .limit(60)
@@ -123,9 +125,9 @@ export default async function handler(req, context) {
     })
   }
 
-  const scored   = actions.filter(a => a.eq && a.cq)
+  const scored   = actions.filter(a => a.eq_score && a.cq_score)
   const avgScore = scored.length
-    ? scored.reduce((sum, a) => sum + (a.eq * a.cq), 0) / scored.length
+    ? scored.reduce((sum, a) => sum + (a.eq_score * a.cq_score), 0) / scored.length
     : 0
 
   const formatted   = formatActions(actions)

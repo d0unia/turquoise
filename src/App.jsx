@@ -4,6 +4,7 @@ import RequireAuth from './components/RequireAuth.jsx'
 import Login from './views/Login.jsx'
 import About from './views/About.jsx'
 import Actions from './views/Actions.jsx'
+import Analysis from './views/Analysis.jsx'
 import Guide from './views/Guide.jsx'
 import Members from './views/admin/Members.jsx'
 import Secrets from './views/admin/Secrets.jsx'
@@ -31,7 +32,7 @@ export default function App() {
       >
         <Route index element={<Navigate to="/guide" replace />} />
         <Route path="actions"     element={<Actions />} />
-        <Route path="analysis"    element={<Placeholder name="Analysis" />} />
+        <Route path="analysis"    element={<Analysis />} />
         <Route path="competitive" element={<Placeholder name="Competitive" />} />
         <Route path="brief"       element={<Placeholder name="Content brief" />} />
         <Route path="guide"       element={<Guide />} />
