@@ -239,6 +239,16 @@ export default function About() {
           </Link>
         </div>
 
+        {/* contact */}
+        <div style={{ marginTop: 24, textAlign: 'center' }}>
+          <a
+            href="mailto:hello@turquoise.live"
+            style={{ fontSize: 12, color: MUTED, textDecoration: 'none' }}
+          >
+            hello@turquoise.live
+          </a>
+        </div>
+
       </div>
     </div>
   )
