@@ -1,6 +1,57 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase.js'
 import TasBadge from '../components/TasBadge.jsx'
+
+// ---------------------------------------------------------------
+// MCP channel routing
+// ---------------------------------------------------------------
+const MCP_CHANNEL_MAP = {
+  linkedin_personal: 'metricool',
+  linkedin_company:  'metricool',
+  x:                 'metricool',
+  ghost_article:     'ghost',
+  newsletter:        'ghost',
+  search_console:    'search-console',
+}
+
+async function fetchMcpMetrics(action) {
+  const mcp = MCP_CHANNEL_MAP[action.channel]
+  if (!mcp) return null
+
+  const { data: { session } } = await supabase.auth.getSession()
+  const jwt = session?.access_token
+
+  const body = {
+    action_id:   action.id,
+    channel:     action.channel,
+    post_url:    action.outcome_draft ?? null,
+    post_date:   action.action_date,
+    page_path:   action.outcome_draft ?? null,
+    page_url:    action.outcome_draft ?? null,
+    post_slug:   action.outcome_draft
+      ? action.outcome_draft.replace(/\/$/, '').split('/').pop()
+      : null,
+  }
+
+  const endpoint = mcp === 'metricool'      ? '/api/mcp-metricool'
+                 : mcp === 'ghost'          ? '/api/mcp-ghost'
+                 : mcp === 'search-console' ? '/api/mcp-search-console'
+                 : mcp === 'plausible'      ? '/api/mcp-plausible'
+                 : null
+
+  if (!endpoint) return null
+
+  const res = await fetch(endpoint, {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      Authorization:   `Bearer ${jwt}`,
+    },
+    body: JSON.stringify(body),
+  })
+
+  return res.json()
+}
 
 const STATUS_CONFIG = {
   active:         { dot: '#1D9E75', label: 'active' },
@@ -79,7 +130,49 @@ function ActionCard({ action, selected, onClick }) {
   )
 }
 
-function AnalysisPane({ action, actions }) {
+function AnalysisPane({ action, actions, onMetricsFetched }) {
+  const [mcpState,   setMcpState]   = useState('idle')
+  const [mcpResult,  setMcpResult]  = useState(null)
+  const [mcpError,   setMcpError]   = useState(null)
+
+  const canFetch = action && MCP_CHANNEL_MAP[action.channel]
+
+  async function handleFetchMetrics() {
+    setMcpState('loading')
+    setMcpError(null)
+    setMcpResult(null)
+    try {
+      const data = await fetchMcpMetrics(action)
+      if (data?.error) {
+        setMcpError(data.error)
+        setMcpState('error')
+      } else {
+        setMcpResult(data?.metrics ?? data)
+        setMcpState('done')
+        // Persist raw response to Supabase
+        await supabase.from('actions').update({
+          mcp_fetched_at:   new Date().toISOString(),
+          mcp_fetch_status: 'fetched',
+          mcp_raw_response: data?.raw ?? data,
+          metric_value_draft: data?.metrics?.impressions
+            ?? data?.metrics?.pageviews
+            ?? data?.metrics?.clicks
+            ?? null,
+        }).eq('id', action.id)
+        if (onMetricsFetched) onMetricsFetched()
+      }
+    } catch (err) {
+      setMcpError(err.message)
+      setMcpState('error')
+    }
+  }
+
+  // Reset MCP state when action changes
+  useEffect(() => {
+    setMcpState('idle')
+    setMcpResult(null)
+    setMcpError(null)
+  }, [action?.id])
   const scored = actions.filter(a => a.eq_score && a.cq_score)
   const avgTas = scored.length
     ? (scored.reduce((s, a) => s + a.eq_score * a.cq_score, 0) / scored.length).toFixed(1)
@@ -151,13 +244,68 @@ function AnalysisPane({ action, actions }) {
               </div>
             )}
           </div>
-          <div style={{ height: '0.5px', background: '#E8E6DD', margin: '0 0 12px' }} />
+          {canFetch && (
+            <>
+              <div style={{
+                fontSize: 10, fontWeight: 500, color: '#888780',
+                textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6,
+              }}>
+                Metrics
+              </div>
+              <button
+                onClick={handleFetchMetrics}
+                disabled={mcpState === 'loading'}
+                style={{
+                  width: '100%', padding: '6px 0',
+                  background: mcpState === 'loading' ? '#E8E6DD' : '#faf9f6',
+                  border: '0.5px solid #E8E6DD', borderRadius: 6,
+                  fontSize: 11, color: mcpState === 'loading' ? '#B4B2A9' : '#555555',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  cursor: mcpState === 'loading' ? 'not-allowed' : 'pointer',
+                  marginBottom: 8,
+                }}
+              >
+                <i className={`ti ${mcpState === 'loading' ? 'ti-loader-2' : 'ti-refresh'}`}
+                  style={{ fontSize: 12, ...(mcpState === 'loading' ? { animation: 'spin 1s linear infinite' } : {}) }}
+                  aria-hidden="true" />
+                {mcpState === 'loading' ? 'Fetching…' : 'Fetch metrics'}
+              </button>
+
+              {mcpState === 'error' && (
+                <div style={{ fontSize: 11, color: '#A32D2D', marginBottom: 8, lineHeight: 1.5 }}>
+                  {mcpError}
+                </div>
+              )}
+
+              {mcpState === 'done' && mcpResult && (
+                <div style={{
+                  background: '#E1F5EE', border: '0.5px solid #A8DECE',
+                  borderRadius: 6, padding: '8px 10px', marginBottom: 8,
+                }}>
+                  {Object.entries(mcpResult).filter(([, v]) => v != null).map(([k, v]) => (
+                    <div key={k} style={{
+                      display: 'flex', justifyContent: 'space-between',
+                      fontSize: 11, color: '#085041', marginBottom: 3,
+                    }}>
+                      <span style={{ textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</span>
+                      <span style={{ fontWeight: 500 }}>
+                        {typeof v === 'number' ? v.toLocaleString() : String(v)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ height: '0.5px', background: '#E8E6DD', margin: '0 0 12px' }} />
+            </>
+          )}
         </>
       )}
 
       <div style={{ fontSize: 12, color: '#B4B2A9', textAlign: 'center', lineHeight: 1.6 }}>
         Run an analysis to surface compounding patterns, blind spots, and signals.
       </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
@@ -168,29 +316,29 @@ export default function Actions() {
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState(null)
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('actions')
-        .select(`
-          *,
-          social_accounts ( display_name ),
-          projects ( name )
-        `)
-        .neq('status', 'untracked')
-        .order('action_date', { ascending: false })
-        .order('created_at', { ascending: false })
+  const load = useCallback(async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('actions')
+      .select(`
+        *,
+        social_accounts ( display_name ),
+        projects ( name )
+      `)
+      .neq('status', 'untracked')
+      .order('action_date', { ascending: false })
+      .order('created_at', { ascending: false })
 
-      if (error) {
-        setError(error.message)
-      } else {
-        setActions(data)
-        if (data.length > 0) setSelected(data[0])
-      }
-      setLoading(false)
+    if (error) {
+      setError(error.message)
+    } else {
+      setActions(data)
+      if (data.length > 0) setSelected(prev => prev ?? data[0])
     }
+    setLoading(false)
+  }, [])
 
+  useEffect(() => {
     load()
 
     // Real-time: refresh on any change to actions
@@ -200,7 +348,7 @@ export default function Actions() {
       .subscribe()
 
     return () => supabase.removeChannel(channel)
-  }, [])
+  }, [load])
 
   const groups = groupByWeek(actions)
   const weekOrder = ['This week', 'Last week', 'Earlier']
@@ -251,7 +399,7 @@ export default function Actions() {
         )}
       </div>
 
-      <AnalysisPane action={selected} actions={actions} />
+      <AnalysisPane action={selected} actions={actions} onMetricsFetched={load} />
     </div>
   )
 }
