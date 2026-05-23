@@ -59,7 +59,7 @@ function BriefCard({ brief, meta }) {
           display: 'flex', gap: 16,
         }}>
           <span>{meta.actions_analysed} actions analysed</span>
-          <span>Avg score {meta.avg_action_score}/25</span>
+          <span>TAS {meta.avg_aq}/100</span>
           {meta.generated_at && (
             <span>{new Date(meta.generated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           )}

@@ -252,13 +252,14 @@ export default function Analysis() {
             {/* Meta strip */}
             <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
               <MetaBadge label="Actions analysed" value={meta?.actions_analysed ?? '—'} />
-              <MetaBadge label="Avg action score" value={meta?.avg_action_score != null ? `${meta.avg_action_score}/25` : '—'} />
+              <MetaBadge label="TAS (avg AQ)" value={meta?.avg_aq != null ? `${meta.avg_aq}/100` : '—'} />
               <MetaBadge
-                label="TAS signal"
+                label="Trend"
                 value={
-                  meta?.avg_action_score >= 15 ? 'Compounding'
-                  : meta?.avg_action_score >= 8  ? 'Treadmill'
-                  : 'Noise'
+                  meta?.overall_trend === 'rising'     ? 'Compounding'
+                  : meta?.overall_trend === 'declining' ? 'Treadmill'
+                  : meta?.overall_trend === 'flat'      ? 'Steady'
+                  : '—'
                 }
               />
             </div>
