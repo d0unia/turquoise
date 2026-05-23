@@ -1,15 +1,26 @@
 /**
  * mcp-metricool.js
- * Returns engagement metrics for a LinkedIn or X post from Metricool.
+ * Metricool connector for Turquoise — LinkedIn + X post engagement.
+ *
+ * Returns aggregate engagement counts for a post and the Attention Quotient
+ * scores (Focus / Intent / AQ) computed from them via the shared attention
+ * model. Uses only AGGREGATE counts (reactions/comments/shares/clicks/saves
+ * per impressions) — never named-engager identity, which LinkedIn gates.
+ *
+ *   Focus  <- reactions, comments, shares   (active vs passive)
+ *   Intent <- link clicks, saves            (self-directed pull)
+ *   reach   = impressions
  *
  * Required env vars (Netlify dashboard):
  *   METRICOOL_API_TOKEN  — your Metricool API token
- *   METRICOOL_USER_TOKEN — your Metricool user token (from account settings)
+ *   METRICOOL_USER_TOKEN — your Metricool user token
  *
  * POST /api/mcp-metricool
- * Body: { action_id, channel, post_url, post_date }
- * Returns: { impressions, reactions, comments, shares, saves, raw }
+ * Body: { channel, post_url, post_date }
+ *   channel: 'linkedin_personal' | 'linkedin_company' | 'x'
  */
+
+import { scoreAttention } from '../lib/attention.js'
 
 const BASE = 'https://app.metricool.com/api/v2'
 
@@ -25,94 +36,94 @@ async function metricoolGet(path, token, userToken) {
   return res.json()
 }
 
-function normalizeLinkedIn(raw) {
-  // Metricool LinkedIn post stats shape
-  const stats = raw?.stats ?? raw?.data ?? raw
+// Map a Metricool post record to the attention counts vocabulary + reach.
+function extractSignals(network, raw) {
+  const s = raw?.stats ?? raw?.data ?? raw ?? {}
+  if (network === 'twitter') {
+    return {
+      reach: s.impressions ?? null,
+      counts: {
+        reaction: s.likes      ?? null,   // Focus
+        comment:  s.replies    ?? null,   // Focus
+        share:    s.retweets   ?? null,   // Focus
+        click:    s.urlClicks  ?? s.clicks ?? null,  // Intent
+        save:     s.bookmarks  ?? null,   // Intent
+      },
+    }
+  }
+  // linkedin
   return {
-    impressions: stats?.impressions ?? stats?.reach    ?? null,
-    reactions:   stats?.reactions   ?? stats?.likes    ?? null,
-    comments:    stats?.comments    ?? null,
-    shares:      stats?.shares      ?? stats?.reposts  ?? null,
-    saves:       stats?.saves       ?? null,
+    reach: s.impressions ?? s.reach ?? null,
+    counts: {
+      reaction: s.reactions ?? s.likes   ?? null,   // Focus
+      comment:  s.comments  ?? null,                // Focus
+      share:    s.shares    ?? s.reposts ?? null,   // Focus
+      click:    s.clicks    ?? s.linkClicks ?? null, // Intent
+      save:     s.saves     ?? null,                // Intent
+    },
   }
 }
 
-function normalizeX(raw) {
-  const stats = raw?.stats ?? raw?.data ?? raw
-  return {
-    impressions: stats?.impressions ?? null,
-    reactions:   stats?.likes       ?? null,
-    comments:    stats?.replies     ?? null,
-    shares:      stats?.retweets    ?? null,
-    saves:       stats?.bookmarks   ?? null,
-  }
-}
-
-export default async function handler(req, context) {
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 })
-  }
+export default async function handler(req) {
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
   const token     = process.env.METRICOOL_API_TOKEN
   const userToken = process.env.METRICOOL_USER_TOKEN
-
   if (!token || !userToken) {
-    return new Response(
-      JSON.stringify({ error: 'METRICOOL_API_TOKEN and METRICOOL_USER_TOKEN are required' }),
-      { status: 500 },
-    )
+    return json({ error: 'METRICOOL_API_TOKEN and METRICOOL_USER_TOKEN are required' }, 500)
   }
 
   let body
-  try { body = await req.json() } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400 })
-  }
+  try { body = await req.json() } catch { return json({ error: 'Invalid JSON body' }, 400) }
 
   const { channel, post_url, post_date } = body
+  if (!post_url) return json({ error: 'post_url is required' }, 400)
 
-  if (!post_url) {
-    return new Response(JSON.stringify({ error: 'post_url is required' }), { status: 400 })
-  }
+  const isX     = channel === 'x'
+  const network = isX ? 'twitter' : 'linkedin'
+  const startDate = post_date ?? new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+  const endDate   = new Date().toISOString().slice(0, 10)
 
+  let match
   try {
-    const isX        = channel === 'x'
-    const network    = isX ? 'twitter' : 'linkedin'
-    const startDate  = post_date ?? new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
-    const endDate    = new Date().toISOString().slice(0, 10)
-
-    // Fetch post list for the network in date range, match by URL
-    const data = await metricoolGet(
-      `/stats/${network}/posts?startDate=${startDate}&endDate=${endDate}`,
-      token,
-      userToken,
+    const data  = await metricoolGet(
+      `/stats/${network}/posts?startDate=${startDate}&endDate=${endDate}`, token, userToken,
     )
-
     const posts = data?.data ?? data?.posts ?? data ?? []
-    const match = posts.find(p =>
-      (p.url ?? p.permalink ?? p.link ?? '').includes(
-        post_url.split('/').filter(Boolean).pop()
-      )
-    )
-
-    if (!match) {
-      return new Response(
-        JSON.stringify({ error: 'Post not found in Metricool for this date range', post_url }),
-        { status: 404 },
-      )
-    }
-
-    const metrics = isX ? normalizeX(match) : normalizeLinkedIn(match)
-
-    return new Response(
-      JSON.stringify({ metrics, raw: match }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    )
+    const tail  = post_url.split('/').filter(Boolean).pop()
+    match = posts.find(p => (p.url ?? p.permalink ?? p.link ?? '').includes(tail))
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: err.message }),
-      { status: 502, headers: { 'Content-Type': 'application/json' } },
-    )
+    return json({ error: err.message }, 502)
   }
+
+  if (!match) {
+    return json({ error: 'Post not found in Metricool for this date range', post_url }, 404)
+  }
+
+  const { reach, counts } = extractSignals(network, match)
+  const score = scoreAttention({ counts, reach, klass: 'social' })
+
+  // Display metrics — only the signals actually present.
+  const metrics = {}
+  if (reach != null) metrics.impressions = reach
+  for (const [k, v] of Object.entries(counts)) if (v != null) metrics[k] = v
+
+  return json({
+    channel,
+    metrics,
+    reach,
+    focus_score:  score.focus_score,
+    intent_score: score.intent_score,
+    aq_score:     score.aq_score,
+    aq_status:    score.aq_status,
+    score_inputs: score.score_inputs,
+    data_gaps:    score.data_gaps,
+    raw: match,
+  }, 200)
+}
+
+function json(obj, status) {
+  return new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } })
 }
 
 export const config = { path: '/api/mcp-metricool' }

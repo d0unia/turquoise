@@ -154,8 +154,9 @@ function AnalysisPane({ action, actions, onMetricsFetched }) {
         setMcpState('done')
 
         const m = data?.metrics ?? {}
-        const primary = m.sends ?? m.opened ?? m.clicks ?? m.signups ?? m.member_clicks ?? null
+        const primary = m.sends ?? m.opened ?? m.impressions ?? m.clicks ?? m.signups ?? m.member_clicks ?? null
         const now = new Date().toISOString()
+        const mcpSource = MCP_CHANNEL_MAP[action.channel] ?? 'unknown'
 
         // Signal store: one placement per (action, channel). The LinkedIn phase
         // writes into the same action. Holds attention scores + raw inputs.
@@ -170,7 +171,7 @@ function AnalysisPane({ action, actions, onMetricsFetched }) {
           aq_score:         data.aq_score ?? null,
           aq_status:        data.aq_status ?? 'pending',
           score_inputs:     data.score_inputs ?? null,
-          mcp_source:       'ghost',
+          mcp_source:       mcpSource,
           mcp_fetched_at:   now,
           mcp_fetch_status: 'fetched',
           mcp_raw_response: data.raw ?? null,
@@ -190,7 +191,7 @@ function AnalysisPane({ action, actions, onMetricsFetched }) {
         await supabase.from('actions').update({
           mcp_fetched_at:     now,
           mcp_fetch_status:   'fetched',
-          mcp_source:         'ghost',
+          mcp_source:         mcpSource,
           mcp_raw_response:   data.raw ?? null,
           metric_value_draft: primary,
           aq_score:           rolledAq,
