@@ -69,6 +69,9 @@ const CHANNEL_ICONS = {
   search_console:    'ti-search',
 }
 
+// Focus / Intent are [0,1]; display them as 0–100.
+const pct = x => (x == null ? null : Math.round(x * 100))
+
 function groupByWeek(actions) {
   const groups = {}
   actions.forEach(a => {
@@ -84,7 +87,7 @@ function groupByWeek(actions) {
 
 function ActionCard({ action, selected, onClick }) {
   const sc  = STATUS_CONFIG[action.status] ?? STATUS_CONFIG.active
-  const tas = action.tas_score ?? (action.eq_score && action.cq_score ? action.eq_score * action.cq_score : null)
+  const tas = action.aq_score ?? null
   const icon = CHANNEL_ICONS[action.channel] ?? 'ti-file'
   const account = action.social_accounts?.display_name ?? action.channel
 
@@ -151,22 +154,22 @@ function AnalysisPane({ action, actions, onMetricsFetched }) {
         setMcpState('done')
 
         const m = data?.metrics ?? {}
-        // Card quick-metric: first meaningful signal available for this channel.
-        const primary = m.sends ?? m.opened_count ?? m.clicks
-          ?? m.signups ?? m.member_clicks ?? null
+        const primary = m.sends ?? m.opened ?? m.clicks ?? m.signups ?? m.member_clicks ?? null
         const now = new Date().toISOString()
 
-        // Signal store: one placement per (action, channel). This is what the
-        // LinkedIn phase will also write into, against the same action.
+        // Signal store: one placement per (action, channel). The LinkedIn phase
+        // writes into the same action. Holds attention scores + raw inputs.
         await supabase.from('action_placements').upsert({
           action_id:        action.id,
           channel:          data.channel ?? action.channel,
           external_url:     action.outcome_draft ?? null,
           metrics:          m,
-          eq_suggested:     data.eq_suggested ?? null,
-          eq_signal:        data.eq_signal ?? null,
-          cq_status:        data.cq_status ?? 'pending',
-          cq_reason:        data.cq_reason ?? null,
+          reach:            data.reach ?? null,
+          focus_score:      data.focus_score ?? null,
+          intent_score:     data.intent_score ?? null,
+          aq_score:         data.aq_score ?? null,
+          aq_status:        data.aq_status ?? 'pending',
+          score_inputs:     data.score_inputs ?? null,
           mcp_source:       'ghost',
           mcp_fetched_at:   now,
           mcp_fetch_status: 'fetched',
@@ -174,13 +177,23 @@ function AnalysisPane({ action, actions, onMetricsFetched }) {
           data_gaps:        data.data_gaps ?? null,
         }, { onConflict: 'action_id,channel' })
 
-        // Keep the action card's quick metric in sync (back-compat).
+        // Roll the action's AQ up to the deepest attention earned on any placement.
+        const { data: places } = await supabase
+          .from('action_placements')
+          .select('aq_score')
+          .eq('action_id', action.id)
+        const rolledAq = (places ?? [])
+          .map(p => p.aq_score)
+          .filter(v => v != null)
+          .reduce((max, v) => (max == null || v > max ? v : max), null)
+
         await supabase.from('actions').update({
           mcp_fetched_at:     now,
           mcp_fetch_status:   'fetched',
           mcp_source:         'ghost',
           mcp_raw_response:   data.raw ?? null,
           metric_value_draft: primary,
+          aq_score:           rolledAq,
         }).eq('id', action.id)
 
         if (onMetricsFetched) onMetricsFetched()
@@ -191,27 +204,16 @@ function AnalysisPane({ action, actions, onMetricsFetched }) {
     }
   }
 
-  // Operator confirms the suggested EQ into the action's score.
-  async function applyEq(eq) {
-    await supabase.from('actions').update({ eq_score: eq }).eq('id', action.id)
-    if (onMetricsFetched) onMetricsFetched()
-  }
-
   // Reset MCP state when action changes
   useEffect(() => {
     setMcpState('idle')
     setMcpResult(null)
     setMcpError(null)
   }, [action?.id])
-  const scored = actions.filter(a => a.eq_score && a.cq_score)
-  const avgTas = scored.length
-    ? (scored.reduce((s, a) => s + a.eq_score * a.cq_score, 0) / scored.length).toFixed(1)
-    : '—'
-  const avgEq = scored.length
-    ? (scored.reduce((s, a) => s + a.eq_score, 0) / scored.length).toFixed(1)
-    : '—'
-  const avgCq = scored.length
-    ? (scored.reduce((s, a) => s + a.cq_score, 0) / scored.length).toFixed(1)
+  const scored  = actions.filter(a => a.aq_score != null)
+  const pending = actions.filter(a => a.aq_score == null)
+  const avgAq = scored.length
+    ? (scored.reduce((s, a) => s + a.aq_score, 0) / scored.length).toFixed(1)
     : '—'
 
   return (
@@ -236,7 +238,7 @@ function AnalysisPane({ action, actions, onMetricsFetched }) {
       </div>
 
       <div style={{ display: 'flex', gap: 5, marginBottom: 12 }}>
-        {[['Avg TAS', avgTas], ['Avg EQ', avgEq], ['Avg CQ', avgCq]].map(([lbl, val]) => (
+        {[['TAS (90d)', avgAq], ['Scored', scored.length], ['Pending', pending.length]].map(([lbl, val]) => (
           <div key={lbl} style={{
             flex: 1, background: '#faf9f6', border: '0.5px solid #E8E6DD',
             borderRadius: 6, padding: '7px 6px', textAlign: 'center',
@@ -259,14 +261,12 @@ function AnalysisPane({ action, actions, onMetricsFetched }) {
               {action.title}
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              {[['EQ', action.eq_score], ['CQ', action.cq_score], ['TAS', action.tas_score]].map(([k, v]) => (
-                <span key={k} style={{
-                  fontSize: 10, padding: '2px 7px', borderRadius: 20,
-                  border: '0.5px solid #E8E6DD', color: v ? '#1a1a1a' : '#B4B2A9',
-                }}>
-                  {k} {v ?? '—'}
-                </span>
-              ))}
+              <span style={{
+                fontSize: 10, padding: '2px 7px', borderRadius: 20,
+                border: '0.5px solid #E8E6DD', color: action.aq_score != null ? '#1a1a1a' : '#B4B2A9',
+              }}>
+                AQ {action.aq_score ?? '—'}
+              </span>
             </div>
             {action.outcome_draft && (
               <div style={{ fontSize: 11, color: '#888780', marginTop: 7, lineHeight: 1.5 }}>
@@ -329,45 +329,32 @@ function AnalysisPane({ action, actions, onMetricsFetched }) {
                     </div>
                   )}
 
-                  {/* Suggested EQ — operator confirms */}
-                  {mcpResult.eq_suggested != null && (
-                    <div style={{
-                      border: '0.5px solid #E8E6DD', borderRadius: 6,
-                      padding: '8px 10px', marginBottom: 8,
-                    }}>
-                      <div style={{ fontSize: 11, color: '#1a1a1a', marginBottom: 2 }}>
-                        Suggested EQ: <strong>{mcpResult.eq_suggested}</strong>
-                      </div>
-                      {mcpResult.eq_signal && (
-                        <div style={{ fontSize: 10, color: '#888780', marginBottom: 6, lineHeight: 1.4 }}>
-                          {mcpResult.eq_signal}
-                        </div>
-                      )}
-                      <button
-                        onClick={() => applyEq(mcpResult.eq_suggested)}
-                        disabled={action.eq_score === mcpResult.eq_suggested}
-                        style={{
-                          width: '100%', padding: '5px 0',
-                          background: action.eq_score === mcpResult.eq_suggested ? '#E8E6DD' : '#1D9E75',
-                          color:      action.eq_score === mcpResult.eq_suggested ? '#888780' : '#fff',
-                          border: 'none', borderRadius: 5, fontSize: 11,
-                          cursor: action.eq_score === mcpResult.eq_suggested ? 'default' : 'pointer',
-                        }}
-                      >
-                        {action.eq_score === mcpResult.eq_suggested
-                          ? `EQ ${mcpResult.eq_suggested} applied`
-                          : `Apply EQ ${mcpResult.eq_suggested}`}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* CQ — honestly pending until LinkedIn is connected */}
-                  <div title={mcpResult.cq_reason ?? ''} style={{
-                    fontSize: 10, color: '#888780', marginBottom: 8, lineHeight: 1.5,
-                    display: 'flex', alignItems: 'flex-start', gap: 5,
+                  {/* Attention scores — Focus x Intent = AQ, computed from signals */}
+                  <div style={{
+                    border: '0.5px solid #E8E6DD', borderRadius: 6,
+                    padding: '8px 10px', marginBottom: 8,
                   }}>
-                    <i className="ti ti-clock" style={{ fontSize: 11, marginTop: 1 }} aria-hidden="true" />
-                    <span>CQ pending — sourced from LinkedIn engagers (later phase)</span>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: mcpResult.aq_status === 'scored' ? 0 : 6 }}>
+                      {[['AQ', mcpResult.aq_score], ['Focus', pct(mcpResult.focus_score)], ['Intent', pct(mcpResult.intent_score)]].map(([k, v]) => (
+                        <div key={k} style={{
+                          flex: 1, textAlign: 'center',
+                          background: '#faf9f6', border: '0.5px solid #E8E6DD',
+                          borderRadius: 6, padding: '6px 4px',
+                        }}>
+                          <div style={{ fontSize: 14, fontWeight: 500, color: v != null ? '#1a1a1a' : '#B4B2A9' }}>
+                            {v ?? '—'}
+                          </div>
+                          <div style={{ fontSize: 9, color: '#888780', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {mcpResult.aq_status !== 'scored' && (
+                      <div style={{ fontSize: 10, color: '#888780', lineHeight: 1.4 }}>
+                        {mcpResult.aq_status === 'partial'
+                          ? 'AQ withheld — only one dimension measurable on this channel yet.'
+                          : 'AQ pending — not enough clean signal to score yet.'}
+                      </div>
+                    )}
                   </div>
 
                   {/* Data gaps — surfaced, never silently faked */}
