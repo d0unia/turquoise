@@ -147,24 +147,54 @@ function AnalysisPane({ action, actions, onMetricsFetched }) {
         setMcpError(data.error)
         setMcpState('error')
       } else {
-        setMcpResult(data?.metrics ?? data)
+        setMcpResult(data)
         setMcpState('done')
-        // Persist raw response to Supabase
-        await supabase.from('actions').update({
-          mcp_fetched_at:   new Date().toISOString(),
+
+        const m = data?.metrics ?? {}
+        // Card quick-metric: first meaningful signal available for this channel.
+        const primary = m.sends ?? m.opened_count ?? m.clicks
+          ?? m.signups ?? m.member_clicks ?? null
+        const now = new Date().toISOString()
+
+        // Signal store: one placement per (action, channel). This is what the
+        // LinkedIn phase will also write into, against the same action.
+        await supabase.from('action_placements').upsert({
+          action_id:        action.id,
+          channel:          data.channel ?? action.channel,
+          external_url:     action.outcome_draft ?? null,
+          metrics:          m,
+          eq_suggested:     data.eq_suggested ?? null,
+          eq_signal:        data.eq_signal ?? null,
+          cq_status:        data.cq_status ?? 'pending',
+          cq_reason:        data.cq_reason ?? null,
+          mcp_source:       'ghost',
+          mcp_fetched_at:   now,
           mcp_fetch_status: 'fetched',
-          mcp_raw_response: data?.raw ?? data,
-          metric_value_draft: data?.metrics?.impressions
-            ?? data?.metrics?.pageviews
-            ?? data?.metrics?.clicks
-            ?? null,
+          mcp_raw_response: data.raw ?? null,
+          data_gaps:        data.data_gaps ?? null,
+        }, { onConflict: 'action_id,channel' })
+
+        // Keep the action card's quick metric in sync (back-compat).
+        await supabase.from('actions').update({
+          mcp_fetched_at:     now,
+          mcp_fetch_status:   'fetched',
+          mcp_source:         'ghost',
+          mcp_raw_response:   data.raw ?? null,
+          metric_value_draft: primary,
         }).eq('id', action.id)
+
         if (onMetricsFetched) onMetricsFetched()
       }
     } catch (err) {
       setMcpError(err.message)
       setMcpState('error')
     }
+  }
+
+  // Operator confirms the suggested EQ into the action's score.
+  async function applyEq(eq) {
+    await supabase.from('actions').update({ eq_score: eq }).eq('id', action.id)
+    if (onMetricsFetched) onMetricsFetched()
   }
 
   // Reset MCP state when action changes
@@ -278,22 +308,75 @@ function AnalysisPane({ action, actions, onMetricsFetched }) {
               )}
 
               {mcpState === 'done' && mcpResult && (
-                <div style={{
-                  background: '#E1F5EE', border: '0.5px solid #A8DECE',
-                  borderRadius: 6, padding: '8px 10px', marginBottom: 8,
-                }}>
-                  {Object.entries(mcpResult).filter(([, v]) => v != null).map(([k, v]) => (
-                    <div key={k} style={{
-                      display: 'flex', justifyContent: 'space-between',
-                      fontSize: 11, color: '#085041', marginBottom: 3,
+                <>
+                  {/* Observed signals */}
+                  {mcpResult.metrics && Object.keys(mcpResult.metrics).length > 0 && (
+                    <div style={{
+                      background: '#E1F5EE', border: '0.5px solid #A8DECE',
+                      borderRadius: 6, padding: '8px 10px', marginBottom: 8,
                     }}>
-                      <span style={{ textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</span>
-                      <span style={{ fontWeight: 500 }}>
-                        {typeof v === 'number' ? v.toLocaleString() : String(v)}
-                      </span>
+                      {Object.entries(mcpResult.metrics).filter(([, v]) => v != null).map(([k, v]) => (
+                        <div key={k} style={{
+                          display: 'flex', justifyContent: 'space-between',
+                          fontSize: 11, color: '#085041', marginBottom: 3,
+                        }}>
+                          <span style={{ textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</span>
+                          <span style={{ fontWeight: 500 }}>
+                            {typeof v === 'number' ? v.toLocaleString() : String(v)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )}
+
+                  {/* Suggested EQ — operator confirms */}
+                  {mcpResult.eq_suggested != null && (
+                    <div style={{
+                      border: '0.5px solid #E8E6DD', borderRadius: 6,
+                      padding: '8px 10px', marginBottom: 8,
+                    }}>
+                      <div style={{ fontSize: 11, color: '#1a1a1a', marginBottom: 2 }}>
+                        Suggested EQ: <strong>{mcpResult.eq_suggested}</strong>
+                      </div>
+                      {mcpResult.eq_signal && (
+                        <div style={{ fontSize: 10, color: '#888780', marginBottom: 6, lineHeight: 1.4 }}>
+                          {mcpResult.eq_signal}
+                        </div>
+                      )}
+                      <button
+                        onClick={() => applyEq(mcpResult.eq_suggested)}
+                        disabled={action.eq_score === mcpResult.eq_suggested}
+                        style={{
+                          width: '100%', padding: '5px 0',
+                          background: action.eq_score === mcpResult.eq_suggested ? '#E8E6DD' : '#1D9E75',
+                          color:      action.eq_score === mcpResult.eq_suggested ? '#888780' : '#fff',
+                          border: 'none', borderRadius: 5, fontSize: 11,
+                          cursor: action.eq_score === mcpResult.eq_suggested ? 'default' : 'pointer',
+                        }}
+                      >
+                        {action.eq_score === mcpResult.eq_suggested
+                          ? `EQ ${mcpResult.eq_suggested} applied`
+                          : `Apply EQ ${mcpResult.eq_suggested}`}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* CQ — honestly pending until LinkedIn is connected */}
+                  <div title={mcpResult.cq_reason ?? ''} style={{
+                    fontSize: 10, color: '#888780', marginBottom: 8, lineHeight: 1.5,
+                    display: 'flex', alignItems: 'flex-start', gap: 5,
+                  }}>
+                    <i className="ti ti-clock" style={{ fontSize: 11, marginTop: 1 }} aria-hidden="true" />
+                    <span>CQ pending — sourced from LinkedIn engagers (later phase)</span>
+                  </div>
+
+                  {/* Data gaps — surfaced, never silently faked */}
+                  {Array.isArray(mcpResult.data_gaps) && mcpResult.data_gaps.length > 0 && (
+                    <div style={{ fontSize: 10, color: '#B4B2A9', marginBottom: 8, lineHeight: 1.5 }}>
+                      Not available: {mcpResult.data_gaps.join('; ')}
+                    </div>
+                  )}
+                </>
               )}
 
               <div style={{ height: '0.5px', background: '#E8E6DD', margin: '0 0 12px' }} />

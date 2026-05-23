@@ -18,10 +18,10 @@ const INTEGRATIONS = [
   {
     key: 'ghost',
     label: 'Ghost Admin API',
-    desc: 'Article metadata, newsletter stats',
+    desc: 'Article + newsletter engagement (sends, opens, clicks, signups)',
     icon: 'ti-pencil',
     status: 'pending',
-    envKey: 'GHOST_ADMIN_API_KEY',
+    envKey: 'GHOST_URL + GHOST_ADMIN_API_KEY',
   },
   {
     key: 'plausible',
