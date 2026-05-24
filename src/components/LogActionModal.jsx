@@ -9,22 +9,6 @@ const CHANNELS = [
   { value: 'newsletter',        label: 'Newsletter' },
 ]
 
-const EQ_LABELS = {
-  1: 'Impression only',
-  2: 'Like or share',
-  3: 'Comment or save',
-  4: 'DM or follow',
-  5: 'Problem-solving signal',
-}
-
-const CQ_LABELS = {
-  1: 'Unknown audience',
-  2: 'Adjacent audience',
-  3: 'Relevant audience',
-  4: 'ICP-adjacent',
-  5: 'Confirmed buyer-adjacent',
-}
-
 export default function LogActionModal({ onClose, onSaved }) {
   const [projects, setProjects]         = useState([])
   const [socialAccounts, setSocialAccounts] = useState([])
@@ -37,8 +21,7 @@ export default function LogActionModal({ onClose, onSaved }) {
     social_account_id: '',
     project_id:        '',
     action_date:       new Date().toISOString().slice(0, 10),
-    eq_score:          '',
-    cq_score:          '',
+    outcome_draft:     '',   // the published URL — used to fetch + score attention
     notes:             '',
   })
 
@@ -64,15 +47,16 @@ export default function LogActionModal({ onClose, onSaved }) {
     setSaving(true)
 
     const payload = {
-      title:       form.title.trim(),
-      channel:     form.channel,
-      action_date: form.action_date,
-      notes:       form.notes.trim() || null,
-      eq_score:    form.eq_score  ? parseInt(form.eq_score)  : null,
-      cq_score:    form.cq_score  ? parseInt(form.cq_score)  : null,
+      title:         form.title.trim(),
+      channel:       form.channel,
+      action_date:   form.action_date,
+      outcome_draft: form.outcome_draft.trim() || null,
+      notes:         form.notes.trim() || null,
       project_id:        form.project_id        || null,
       social_account_id: form.social_account_id || null,
       // organization_id is enforced by RLS — Supabase injects it from the session
+      // EQ/CQ are gone: attention scores (Focus/Intent/AQ) are computed from
+      // fetched signals, never entered by hand.
     }
 
     const { error } = await supabase.from('actions').insert(payload)
@@ -87,9 +71,6 @@ export default function LogActionModal({ onClose, onSaved }) {
     }
   }
 
-  const tas = form.eq_score && form.cq_score
-    ? parseInt(form.eq_score) * parseInt(form.cq_score)
-    : null
 
   return (
     <div
@@ -163,34 +144,24 @@ export default function LogActionModal({ onClose, onSaved }) {
             />
           </Field>
 
-          {/* EQ / CQ */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Field label="EQ — engagement depth">
-              <select value={form.eq_score} onChange={e => set('eq_score', e.target.value)} style={inputStyle}>
-                <option value="">—</option>
-                {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} — {EQ_LABELS[n]}</option>)}
-              </select>
-            </Field>
-            <Field label="CQ — commercial fit">
-              <select value={form.cq_score} onChange={e => set('cq_score', e.target.value)} style={inputStyle}>
-                <option value="">—</option>
-                {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} — {CQ_LABELS[n]}</option>)}
-              </select>
-            </Field>
-          </div>
+          {/* Published URL — what Turquoise fetches to score attention */}
+          <Field label="Published URL">
+            <input
+              type="url"
+              value={form.outcome_draft}
+              onChange={e => set('outcome_draft', e.target.value)}
+              placeholder="https://… (the live post / article URL)"
+              style={inputStyle}
+            />
+          </Field>
 
-          {/* TAS preview */}
-          {tas != null && (
-            <div style={{ marginBottom: 14, fontSize: 12, color: '#1a1a1a', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: '#888780' }}>TAS preview:</span>
-              <span style={{
-                padding: '2px 10px', borderRadius: 20,
-                background: tas >= 15 ? '#E1F5EE' : tas >= 8 ? '#FAEEDA' : '#F1EFE8',
-                color:      tas >= 15 ? '#085041' : tas >= 8 ? '#633806' : '#5F5E5A',
-                fontWeight: 500, fontSize: 13,
-              }}>{tas}</span>
-            </div>
-          )}
+          <div style={{
+            marginBottom: 14, fontSize: 11, color: '#888780', lineHeight: 1.5,
+            background: '#faf9f6', border: '0.5px solid #E8E6DD', borderRadius: 6, padding: '8px 10px',
+          }}>
+            Attention scores (Focus / Intent / AQ) are computed automatically from
+            the post's signals — fetch metrics after logging. Nothing to score by hand.
+          </div>
 
           {/* Notes */}
           <Field label="Notes (optional)">
