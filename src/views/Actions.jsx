@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase.js'
 import TasBadge from '../components/TasBadge.jsx'
+import { useProject } from '../lib/ProjectContext.jsx'
 
 // ---------------------------------------------------------------
 // MCP channel routing
@@ -382,6 +383,7 @@ function AnalysisPane({ action, actions, onMetricsFetched }) {
 }
 
 export default function Actions() {
+  const { projectId } = useProject()
   const [actions, setActions]   = useState([])
   const [selected, setSelected] = useState(null)
   const [loading, setLoading]   = useState(true)
@@ -389,7 +391,7 @@ export default function Actions() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
+    let query = supabase
       .from('actions')
       .select(`
         *,
@@ -397,6 +399,8 @@ export default function Actions() {
         projects ( name )
       `)
       .neq('status', 'untracked')
+    if (projectId) query = query.eq('project_id', projectId)
+    const { data, error } = await query
       .order('action_date', { ascending: false })
       .order('created_at', { ascending: false })
 
@@ -404,10 +408,10 @@ export default function Actions() {
       setError(error.message)
     } else {
       setActions(data)
-      if (data.length > 0) setSelected(prev => prev ?? data[0])
+      setSelected(prev => (data.some(a => a.id === prev?.id) ? prev : data[0] ?? null))
     }
     setLoading(false)
-  }, [])
+  }, [projectId])
 
   useEffect(() => {
     load()

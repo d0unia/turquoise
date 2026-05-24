@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
 import RequireAuth from './components/RequireAuth.jsx'
+import { ProjectProvider } from './lib/ProjectContext.jsx'
 import Login from './views/Login.jsx'
 import About from './views/About.jsx'
 import Actions from './views/Actions.jsx'
@@ -28,7 +29,9 @@ export default function App() {
         path="/"
         element={
           <RequireAuth>
-            <Layout />
+            <ProjectProvider>
+              <Layout />
+            </ProjectProvider>
           </RequireAuth>
         }
       >

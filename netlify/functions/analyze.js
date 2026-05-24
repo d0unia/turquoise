@@ -120,12 +120,18 @@ export default async function handler(req) {
     global: { headers: { Authorization: `Bearer ${jwt}` } },
   })
 
+  // Optional project scope. null = analyse the whole org (cross-project view).
+  let project_id = null
+  try { project_id = (await req.json())?.project_id ?? null } catch { /* no body */ }
+
   const since = new Date(Date.now() - WINDOW_DAYS * DAY).toISOString().slice(0, 10)
-  const { data: actions, error: dbError } = await supabase
+  let query = supabase
     .from('actions')
-    .select('id, organization_id, action_date, channel, title, aq_score, notes, status, social_accounts(display_name)')
+    .select('id, organization_id, project_id, action_date, channel, title, aq_score, notes, status, social_accounts(display_name)')
     .neq('status', 'untracked')
     .gte('action_date', since)
+  if (project_id) query = query.eq('project_id', project_id)
+  const { data: actions, error: dbError } = await query
     .order('action_date', { ascending: false })
     .limit(120)
 
@@ -184,6 +190,7 @@ export default async function handler(req) {
     avg_action_score: stats.avg_aq,        // back-compat alias for the views
     overall_trend:    stats.overall_trend,
     window_days:      WINDOW_DAYS,
+    project_id,
     generated_at,
   }
 
@@ -194,6 +201,7 @@ export default async function handler(req) {
   try {
     const { error: insErr } = await supabase.from('content_briefs').insert({
       organization_id:   actions[0].organization_id,
+      project_id,
       generated_at,
       compounding:       analysis.compounding ?? null,
       underperforming:   analysis.underperforming ?? null,

@@ -1,8 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import LogActionModal from './LogActionModal.jsx'
-
-const PROJECTS = ['Scopelabs', 'Prompt Ranks']
+import { useProject } from '../lib/ProjectContext.jsx'
 
 const NAV_MAIN = [
   { to: '/actions',     icon: 'ti-layout-list',  label: 'Actions' },
@@ -73,7 +72,7 @@ function NavSection({ label, items }) {
 
 export default function Layout() {
   const location = useLocation()
-  const [project, setProject] = useState(0)
+  const { projects, projectId, projectName, selectProject } = useProject()
   const [pickerOpen, setPickerOpen]   = useState(false)
   const [logOpen, setLogOpen]         = useState(false)
   const title = PAGE_TITLES[location.pathname] ?? ''
@@ -117,7 +116,7 @@ export default function Layout() {
             >
               <div>
                 <div style={{ fontSize: 10, color: '#888780', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 1 }}>Project</div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: '#1a1a1a' }}>{PROJECTS[project]}</div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: '#1a1a1a' }}>{projectName}</div>
               </div>
               <i className="ti ti-chevron-down" style={{ fontSize: 12, color: '#888780' }} aria-hidden="true" />
             </button>
@@ -127,21 +126,24 @@ export default function Layout() {
                 background: '#fff', border: '0.5px solid #E8E6DD', borderRadius: 6,
                 overflow: 'hidden', zIndex: 10,
               }}>
-                {PROJECTS.map((name, i) => (
-                  <button
-                    key={name}
-                    onClick={() => { setProject(i); setPickerOpen(false) }}
-                    style={{
-                      display: 'block', width: '100%', textAlign: 'left',
-                      padding: '8px 10px', fontSize: 12,
-                      color: i === project ? '#1D9E75' : '#1a1a1a',
-                      background: i === project ? '#E1F5EE' : 'transparent',
-                      border: 'none', cursor: 'pointer',
-                    }}
-                  >
-                    {name}
-                  </button>
-                ))}
+                {[{ id: null, name: 'All projects' }, ...projects].map(p => {
+                  const active = p.id === projectId
+                  return (
+                    <button
+                      key={p.id ?? 'all'}
+                      onClick={() => { selectProject(p.id); setPickerOpen(false) }}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left',
+                        padding: '8px 10px', fontSize: 12,
+                        color: active ? '#1D9E75' : '#1a1a1a',
+                        background: active ? '#E1F5EE' : 'transparent',
+                        border: 'none', cursor: 'pointer',
+                      }}
+                    >
+                      {p.name}
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { useProject } from '../lib/ProjectContext.jsx'
 
 const TEAL   = '#1D9E75'
 const DARK   = '#1a1a1a'
@@ -114,6 +115,7 @@ function MetaBadge({ label, value }) {
 }
 
 export default function Analysis() {
+  const { projectId } = useProject()
   const [state, setState] = useState('idle') // idle | loading | done | error
   const [result, setResult] = useState(null)
   const [errorMsg, setErrorMsg] = useState(null)
@@ -137,6 +139,7 @@ export default function Analysis() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
+        body: JSON.stringify({ project_id: projectId }),
       })
 
       const json = await res.json()
